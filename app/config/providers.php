@@ -133,6 +133,12 @@ return [
         'enabled' => true,
         'mock' => false
     ],
+    'vimeo' => [
+        'developers' => 'https://developer.vimeo.com/api/authentication',
+        'icon' => 'icon-vimeo',
+        'enabled' => true,
+        'mock' => false
+    ],
     // Keep Last
     'mock' => [
         'developers' => 'https://appwrite.io',
