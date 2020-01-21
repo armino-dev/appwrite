@@ -1,0 +1,150 @@
+<?php
+
+namespace Auth\OAuth;
+
+use Auth\OAuth;
+
+// Reference Material
+// https://developer.vimeo.com/api/authentication
+
+class Vimeo extends OAuth
+{
+
+    /**
+     * @var string
+     */
+    private $endpoint = 'https://api.vimeo.com/oauth/';
+
+    /**
+     * @var string
+     */
+    private $resourceEndpoint = 'https://api.spotify.com/v1/';
+
+    /**
+     * @var array
+     */
+    protected $scopes = [
+        'user-read-email',
+    ];
+
+    /**
+     * @var array
+     */
+    protected $user = [];
+
+    /**
+     * @return string
+     */
+    public function getName():string
+    {
+        return 'vimeo';
+    }
+
+    /**
+     * @return string
+     */
+    public function getLoginURL():string
+    {
+        return $this->endpoint . 'authorize?'.
+            http_build_query([
+                'response_type' => 'code',
+                'client_id' => $this->appID,
+                'scope' => implode(' ', $this->getScopes()),
+                'redirect_uri' => $this->callback,
+                'state' => json_encode($this->state)
+            ]);
+    }
+
+    /**
+     * @param string $code
+     *
+     * @return string
+     */
+    public function getAccessToken(string $code):string
+    {
+        $headers = [
+            "Authorization: Basic " . base64_encode($this->appID . ":" . $this->appSecret),
+            "Content-Type: application/json",
+            "Accept: application/vnd.vimeo.*+json;version=3.4",
+        ];
+        $result = json_decode($this->request(
+            'POST',
+            $this->endpoint . 'token',
+            $headers,
+            http_build_query([
+                "code" => $code,
+                "grant_type" => "authorization_code",
+                "redirect_uri" => $this->callback
+            ])
+        ), true);
+
+        if (isset($result['access_token'])) {
+            return $result['access_token'];
+        }
+
+        return '';
+    }
+
+    /**
+     * @param $accessToken
+     *
+     * @return string
+     */
+    public function getUserID(string $accessToken):string
+    {
+        $user = $this->getUser($accessToken);
+
+        if (isset($user['id'])) {
+            return $user['id'];
+        }
+
+        return '';
+    }
+
+    /**
+     * @param $accessToken
+     *
+     * @return string
+     */
+    public function getUserEmail(string $accessToken):string
+    {
+        $user = $this->getUser($accessToken);
+
+        if (isset($user['email'])) {
+            return $user['email'];
+        }
+
+        return '';
+    }
+
+    /**
+     * @param $accessToken
+     *
+     * @return string
+     */
+    public function getUserName(string $accessToken):string
+    {
+        $user = $this->getUser($accessToken);
+
+        if (isset($user['display_name'])) {
+            return $user['display_name'];
+        }
+
+        return '';
+    }
+
+    /**
+     * @param string $accessToken
+     *
+     * @return array
+     */
+    protected function getUser(string $accessToken)
+    {
+        if (empty($this->user)) {
+            $this->user = json_decode($this->request('GET',
+                $this->resourceEndpoint . "me", ['Authorization: Bearer '.urlencode($accessToken)]), true);
+        }
+
+        return $this->user;
+    }
+}
